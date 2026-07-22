@@ -1,0 +1,32 @@
+package com.google.android.gms.dynamite;
+
+import android.content.Context;
+
+/* JADX INFO: compiled from: com.google.android.gms:play-services-basement@@18.1.0 */
+/* JADX INFO: loaded from: classes2.dex */
+final class zzk implements DynamiteModule.VersionPolicy {
+    zzk() {
+    }
+
+    @Override // com.google.android.gms.dynamite.DynamiteModule.VersionPolicy
+    public final DynamiteModule.VersionPolicy.SelectionResult selectModule(Context context, String str, DynamiteModule.VersionPolicy.IVersions iVersions) throws DynamiteModule.LoadingException {
+        DynamiteModule.VersionPolicy.SelectionResult selectionResult = new DynamiteModule.VersionPolicy.SelectionResult();
+        selectionResult.localVersion = iVersions.zza(context, str);
+        int iZzb = iVersions.zzb(context, str, true);
+        selectionResult.remoteVersion = iZzb;
+        int i = selectionResult.localVersion;
+        if (i == 0) {
+            i = 0;
+            if (iZzb == 0) {
+                selectionResult.selection = 0;
+                return selectionResult;
+            }
+        }
+        if (iZzb >= i) {
+            selectionResult.selection = 1;
+            return selectionResult;
+        }
+        selectionResult.selection = -1;
+        return selectionResult;
+    }
+}
