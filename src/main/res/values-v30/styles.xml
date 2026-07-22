@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Base.Theme.SplashScreen" parent="@android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:windowLayoutInDisplayCutoutMode">3</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="isLightTheme">?android:attr/isLightTheme</item>
+    </style>
+    <style name="gboard_dark" parent="">
+        <item name="color">#292e32</item>
+    </style>
+    <style name="gboard_light" parent="">
+        <item name="color">#e8eaed</item>
+    </style>
+    <style name="gboard_tts_light" parent="">
+        <item name="color">#f8f9fa</item>
+    </style>
+    <style name="yandex_dark" parent="">
+        <item name="color">#121212</item>
+    </style>
+    <style name="yandex_light" parent="">
+        <item name="color">#eaeef2</item>
+    </style>
+</resources>
