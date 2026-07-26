@@ -1,0 +1,90 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+android {
+    compileSdk 34
+    namespace 'com.t1tunnel'
+    defaultConfig {
+        applicationId "com.t1tunnel"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "2.0"
+        multiDexEnabled true
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+    }
+    signingConfigs {
+        debug {
+            storeFile file(System.getProperty("user.home") + '/.android/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        release {
+            // Populated via -Prelease.storeFile=... (see .github/workflows/build.yml's
+            // build-release job, or pass the same properties locally). Falls back to the
+            // debug keystore when unset so `./gradlew assembleRelease` still works with no
+            // extra setup - just don't ship that build to a Play Store listing.
+            if (project.hasProperty('release.storeFile')) {
+                storeFile file(project.property('release.storeFile'))
+                storePassword project.property('release.storePassword')
+                keyAlias project.property('release.keyAlias')
+                keyPassword project.property('release.keyPassword')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig project.hasProperty('release.storeFile') ? signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = "17" }
+    buildFeatures {
+        aidl true
+    }
+    packagingOptions {
+        jniLibs { useLegacyPackaging = true }
+        resources {
+            excludes += ["META-INF/DEPENDENCIES", "META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/NOTICE", "META-INF/NOTICE.txt"]
+        }
+    }
+}
+dependencies {
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10'
+    implementation "androidx.multidex:multidex:2.0.1"
+    implementation(name:'xray', ext:'aar')
+    implementation 'com.wireguard.android:tunnel:1.0.20230427'
+    // NOTE: de.blinkt.openvpn:core and org.strongswan.android:strongswan are NOT real
+    // published Maven artifacts - they don't exist on Maven Central or JitPack, so leaving
+    // them in breaks dependency resolution for the whole project. ics-openvpn (schwabe/ics-openvpn)
+    // and strongSwan's Android client are shipped as full app source trees, not libraries.
+    // Instead, OpenVPN/IKEv2 are driven through each project's own documented external-control
+    // API against the installed companion app (see com.t1tunnel.protocols.openvpn.OpenVpnBridge
+    // and .StrongSwanBridge) - that just needs the small AIDL interop contract under
+    // app/src/main/aidl/de/blinkt/openvpn/api, no extra dependency here.
+    implementation 'com.google.android.gms:play-services-ads:23.0.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'dnsjava:dnsjava:3.5.2'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+}

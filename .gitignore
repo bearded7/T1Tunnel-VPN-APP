@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+app/libs/xray.aar
+keys/*.pem
+keys/reality.env
+*.keystore
+*.jks
