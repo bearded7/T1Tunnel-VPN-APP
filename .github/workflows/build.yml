@@ -1,0 +1,108 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ubuntu-latest GitHub-hosted runners already ship with Android SDK
+      # platform/build-tools preinstalled; this action just points env vars
+      # at them and installs any extra packages we ask for (here: the NDK,
+      # needed for both the tun2socks C code and the gomobile/Xray build).
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK + CMake
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "ndk;26.1.10909125" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Create debug keystore
+        run: |
+          mkdir -p ~/.android
+          keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore \
+            -storepass android -keypass android \
+            -alias androiddebugkey \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Build native Xray AAR
+        run: |
+          chmod +x scripts/build_xray.sh
+          ./scripts/build_xray.sh
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Grant execute permission to gradlew
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: t1tunnel-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  # Optional release build - only runs if you've added these repo secrets:
+  # RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+  build-release:
+    runs-on: ubuntu-latest
+    if: ${{ false }}  # flip to `true` once the secrets above are configured
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK + CMake
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "ndk;26.1.10909125" "cmake;3.22.1"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      - name: Build native Xray AAR
+        run: |
+          chmod +x scripts/build_xray.sh
+          ./scripts/build_xray.sh
+      - name: Decode release keystore
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace \
+            -Prelease.storeFile=$(pwd)/release.keystore \
+            -Prelease.storePassword="${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
+            -Prelease.keyAlias="${{ secrets.RELEASE_KEY_ALIAS }}" \
+            -Prelease.keyPassword="${{ secrets.RELEASE_KEY_PASSWORD }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: t1tunnel-release-apk
+          path: app/build/outputs/apk/release/*.apk
