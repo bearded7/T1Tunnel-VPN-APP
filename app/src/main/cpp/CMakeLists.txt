@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.10)
+project("t1tunnel_native")
+add_library(tun2socks SHARED tun2socks.c dns_injector.c http_injector.c)
+target_include_directories(tun2socks PRIVATE ${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include)
+find_library(log-lib log)
+target_link_libraries(tun2socks ${log-lib})

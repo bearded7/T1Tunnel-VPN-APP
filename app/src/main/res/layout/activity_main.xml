@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_horizontal"
+    android:padding="24dp" android:background="@drawable/bg_main">
+
+    <ImageView android:layout_width="80dp" android:layout_height="80dp" android:src="@drawable/ic_launcher_foreground"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="T1Tunnel" android:textSize="28sp" android:textStyle="bold"
+        android:textColor="@android:color/white" android:fontFamily="sans-serif-black" android:layout_marginTop="8dp"/>
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="Torit · South Sudan" android:textColor="@color/torit_orange"
+        android:textSize="14sp" android:fontFamily="sans-serif-light" android:layout_marginBottom="24dp"/>
+
+    <LinearLayout android:id="@+id/ad_container" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:gravity="center" android:orientation="horizontal"
+        android:background="#22000000" android:padding="8dp"/>
+
+    <androidx.cardview.widget.CardView android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginTop="16dp"
+        app:cardBackgroundColor="@android:color/white" app:cardElevation="8dp" app:cardCornerRadius="16dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="20dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Protocol" android:textColor="@color/colorPrimary"
+                style="@style/TextAppearance.AppCompat.Medium"/>
+            <Spinner android:id="@+id/protocol_spinner" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:entries="@array/protocols"
+                android:background="@drawable/spinner_border"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Server" android:textColor="@color/colorPrimary"
+                android:layout_marginTop="16dp" style="@style/TextAppearance.AppCompat.Medium"/>
+            <Spinner android:id="@+id/server_spinner" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:background="@drawable/spinner_border"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Tunnel Mode" android:textColor="@color/colorPrimary"
+                android:layout_marginTop="16dp" style="@style/TextAppearance.AppCompat.Medium"/>
+            <Spinner android:id="@+id/mode_spinner" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:background="@drawable/spinner_border"/>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <Button android:id="@+id/btn_toggle" android:layout_width="match_parent"
+        android:layout_height="56dp" android:layout_marginTop="32dp"
+        android:text="Connect to Torit" android:textColor="@android:color/white"
+        android:backgroundTint="@color/torit_orange" android:textAllCaps="false"
+        android:letterSpacing="0.05" android:textSize="18sp" android:fontFamily="sans-serif-medium"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="16dp">
+        <Button android:id="@+id/btn_export" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Export" android:backgroundTint="@android:color/transparent"
+            android:textColor="@android:color/white" style="?android:attr/borderlessButtonStyle"/>
+        <Button android:id="@+id/btn_import" android:layout_width="0dp"
+            android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="Import" android:backgroundTint="@android:color/transparent"
+            android:textColor="@android:color/white" style="?android:attr/borderlessButtonStyle"/>
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginTop="12dp" android:gravity="center_vertical"
+        android:orientation="horizontal" android:alpha="0.6">
+        <ImageView android:layout_width="16dp" android:layout_height="16dp"
+            android:src="@drawable/ic_breadcrumb"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="River Kinaiti · Silent Window · Himodonge"
+            android:textColor="@android:color/white" android:textSize="12sp" android:layout_marginStart="8dp"/>
+    </LinearLayout>
+</LinearLayout>

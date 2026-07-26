@@ -1,0 +1,6 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape><gradient android:angle="270" android:startColor="#1A237E" android:endColor="#283593"/></shape></item>
+    <item android:top="60dp"><shape android:color="#1B5E20"/></item>
+    <item android:top="70dp"><shape android:color="#4FC3F7"/></item>
+    <item android:top="65dp"><bitmap android:src="@drawable/ic_wave_pattern" android:tileMode="repeat"/></item>
+</layer-list>

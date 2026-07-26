@@ -1,0 +1,59 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+android {
+    compileSdk 34
+    namespace 'com.t1tunnel'
+    defaultConfig {
+        applicationId "com.t1tunnel"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "2.0"
+        multiDexEnabled true
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+    }
+    signingConfigs {
+        debug {
+            storeFile file(System.getProperty("user.home") + '/.android/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+        }
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+    kotlinOptions { jvmTarget = "17" }
+}
+dependencies {
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "com.google.android.material:material:1.12.0"
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10'
+    implementation "androidx.multidex:multidex:2.0.1"
+    implementation(name:'xray', ext:'aar')
+    implementation 'com.wireguard.android:tunnel:1.0.20230706'
+    implementation 'de.blinkt.openvpn:core:0.7.1'
+    implementation 'org.strongswan.android:strongswan:2.4.1'
+    implementation 'com.google.android.gms:play-services-ads:23.0.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'dnsjava:dnsjava:3.5.2'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.documentfile:documentfile:1.0.1'
+}

@@ -1,0 +1,1 @@
+// HTTP header injection placeholder
