@@ -252,4 +252,63 @@ class MainActivity : Activity() {
         private const val REQUEST_VPN = 100
         private const val REQUEST_IMPORT = 101
     }
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_main)
+    SecureStorage.init(this)
+    ServerManager.init(this)   // <-- load servers from JSON
+
+    // ... rest of UI setup
+
+    protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            val protocol = when (position) {
+                0 -> "vless"
+                1 -> "wireguard"
+                2 -> "openvpn_udp"
+                3 -> "openvpn_tcp"
+                4 -> "ikev2"
+                else -> "vless"
+            }
+            currentProtocolTag = protocol
+            val servers = ServerManager.getServers(protocol)
+            val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item, servers.map { it.name })
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            serverSpinner.adapter = adapter
+        }
+        override fun onNothingSelected(parent: AdapterView<*>?) {}
+    }
+}
+
+private fun onVpnPermissionGranted() {
+    val serviceClass = when (currentProtocolTag) {
+        "vless" -> VlessRealityService::class.java
+        "wireguard" -> WireGuardService::class.java
+        "openvpn_udp" -> OpenVpnUdpService::class.java
+        "openvpn_tcp" -> OpenVpnTcpService::class.java
+        "ikev2" -> Ikev2Service::class.java
+        else -> return
+    }
+    val servers = ServerManager.getServers(currentProtocolTag)
+    if (servers.isEmpty()) return
+    val server = servers[serverSpinner.selectedItemPosition]
+
+    val configIntent = Intent(this, serviceClass).apply {
+        putExtra("server", server.host)
+        putExtra("port", server.port)
+        putExtra("uuid", "a0cfa4a0-916e-4f74-a20a-1b2a54e0c556")
+        putExtra("sni", server.sni ?: "")
+        putExtra("bugHost", server.bugHost ?: "")
+        putExtra("mode", modeSpinner.selectedItem.toString())
+        // WireGuard will ignore these extras and use random rotation
+        putExtra("publicKey", server.publicKey ?: "")
+        putExtra("endpoint", server.endpoint ?: "")
+    }
+    startService(configIntent)
+    isRunning = true
+    btnToggle.text = "Stop VPN"
+    Toast.makeText(this, "VPN connected", Toast.LENGTH_SHORT).show()
+}
+
 }
