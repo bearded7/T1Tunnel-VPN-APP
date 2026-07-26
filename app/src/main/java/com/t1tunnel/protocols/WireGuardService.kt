@@ -1,9 +1,7 @@
 package com.t1tunnel.protocols
 
-import android.content.Intent
 import com.t1tunnel.base.BaseVpnService
 import com.t1tunnel.base.ProtocolConfig
-import com.t1tunnel.servers.Server
 import com.t1tunnel.servers.ServerManager
 import com.wireguard.android.backend.GoBackend
 import com.wireguard.config.*
@@ -16,11 +14,11 @@ class WireGuardService : BaseVpnService() {
         val peers = ServerManager.getWireGuardPeers()
         if (peers.isEmpty()) return
 
-        // Pick a random peer
+        // Pick a random peer for each connection
         val randomPeer = peers[Random.nextInt(peers.size)]
 
-        // Your local WireGuard private key (MUST be set correctly)
-        val localPrivateKey = "8fG9i0J1k2L3m4N5o6P7q8R9s0T1uV2wX3yZ4aB5c6d="
+        // ⚠️ Replace this with your actual local WireGuard private key
+        val localPrivateKey = "a0cfa4a0-916e-4f74-a20a-1b2a54e0c556"
 
         val interfaceAddress = InetNetwork.parse("10.0.0.2/24")
         val peer = Peer.Builder()

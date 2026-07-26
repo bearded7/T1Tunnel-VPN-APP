@@ -4,24 +4,15 @@ import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
 import android.os.Bundle
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import com.t1tunnel.ads.AdManager
-import com.t1tunnel.protocols.Ikev2Service
-import com.t1tunnel.protocols.OpenVpnTcpService
-import com.t1tunnel.protocols.OpenVpnUdpService
-import com.t1tunnel.protocols.VlessRealityService
-import com.t1tunnel.protocols.WireGuardService
-import com.t1tunnel.protocols.openvpn.OpenVpnBridge
-import com.t1tunnel.protocols.openvpn.StrongSwanBridge
-import com.t1tunnel.servers.Server
+import com.t1tunnel.protocols.*
 import com.t1tunnel.servers.ServerManager
-import com.t1tunnel.tunneld.TunnelMode
 import com.t1tunnel.tweaks.SecureStorage
 import com.t1tunnel.tweaks.TweakManager
-
-private enum class Protocol { VLESS_REALITY, WIREGUARD, OPENVPN_UDP, OPENVPN_TCP, IKEV2 }
 
 class MainActivity : Activity() {
     private lateinit var btnToggle: Button
@@ -31,12 +22,13 @@ class MainActivity : Activity() {
     private lateinit var serverSpinner: Spinner
     private lateinit var modeSpinner: Spinner
     private var isRunning = false
-    private var activeProtocol: Protocol? = null
+    private var currentProtocolTag = "vless"   // default
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         SecureStorage.init(this)
+        ServerManager.init(this)   // load servers from assets
 
         AdManager.loadBanner(this, findViewById(R.id.ad_container))
         protocolSpinner = findViewById(R.id.protocol_spinner)
@@ -46,74 +38,52 @@ class MainActivity : Activity() {
         btnExport = findViewById(R.id.btn_export)
         btnImport = findViewById(R.id.btn_import)
 
+        // Protocol spinner entries
         ArrayAdapter.createFromResource(this, R.array.protocols, android.R.layout.simple_spinner_item)
             .also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item); protocolSpinner.adapter = it }
-        // Order must match TunnelMode's enum ordinal order exactly - MainActivity sends the
-        // selected index straight through as "modeOrdinal" for XrayConfigBuilder to consume.
-        modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item,
-            arrayOf("Direct", "HTTP Connect", "Raw TCP", "TLS Tunnel", "WebSocket", "WS Secure", "WS CDN", "WS Secure CDN"))
-        serverSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item,
-            ServerManager.servers.map { it.name })
 
-        btnToggle.setOnClickListener {
-            if (!isRunning) {
-                startVpn()
-            } else {
-                stopVpn()
+        // Tunnel mode entries
+        modeSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item,
+            arrayOf("Direct","HTTP Connect","Raw TCP","TLS Tunnel","WebSocket","WS Secure","WS CDN","WS Secure CDN"))
+
+        // When protocol changes, reload server list
+        protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                currentProtocolTag = when (position) {
+                    0 -> "vless"
+                    1 -> "wireguard"
+                    2 -> "openvpn_udp"
+                    3 -> "openvpn_tcp"
+                    4 -> "ikev2"
+                    else -> "vless"
+                }
+                val servers = ServerManager.getServers(currentProtocolTag)
+                val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item, servers.map { it.name })
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                serverSpinner.adapter = adapter
             }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        // Start / Stop VPN
+        btnToggle.setOnClickListener {
+            if (!isRunning) startVpn() else stopVpn()
         }
         btnExport.setOnClickListener { exportTweaks() }
         btnImport.setOnClickListener { importTweaks() }
     }
 
-    private fun currentServer(): Server = ServerManager.servers[serverSpinner.selectedItemPosition]
-
-    private fun currentProtocol(): Protocol = when (protocolSpinner.selectedItemPosition) {
-        0 -> Protocol.VLESS_REALITY
-        1 -> Protocol.WIREGUARD
-        2 -> Protocol.OPENVPN_UDP
-        3 -> Protocol.OPENVPN_TCP
-        4 -> Protocol.IKEV2
-        else -> Protocol.VLESS_REALITY
-    }
-
     private fun startVpn() {
-        when (currentProtocol()) {
-            Protocol.VLESS_REALITY, Protocol.WIREGUARD -> {
-                // These two establish the OS-level tun themselves, so this app needs the
-                // standard VpnService consent dialog.
-                val intent = VpnService.prepare(this)
-                if (intent != null) {
-                    startActivityForResult(intent, REQUEST_VPN)
-                } else {
-                    onVpnPermissionGranted()
-                }
-            }
-            Protocol.OPENVPN_UDP -> OpenVpnBridge.connect(this, currentServer(), useTcp = false)
-                .also { markRunning(Protocol.OPENVPN_UDP) }
-            Protocol.OPENVPN_TCP -> OpenVpnBridge.connect(this, currentServer(), useTcp = true)
-                .also { markRunning(Protocol.OPENVPN_TCP) }
-            Protocol.IKEV2 -> StrongSwanBridge.importProfile(this, currentServer())
-                .also { markRunning(Protocol.IKEV2) }
+        val intent = VpnService.prepare(this)
+        if (intent != null) {
+            startActivityForResult(intent, REQUEST_VPN)
+        } else {
+            onVpnPermissionGranted()
         }
-    }
-
-    private fun markRunning(protocol: Protocol) {
-        activeProtocol = protocol
-        isRunning = true
-        btnToggle.text = "Stop VPN"
-        Toast.makeText(this, "VPN connecting via companion app...", Toast.LENGTH_LONG).show()
     }
 
     private fun stopVpn() {
-        when (activeProtocol) {
-            Protocol.VLESS_REALITY -> stopService(Intent(this, VlessRealityService::class.java))
-            Protocol.WIREGUARD -> stopService(Intent(this, WireGuardService::class.java))
-            Protocol.OPENVPN_UDP, Protocol.OPENVPN_TCP -> OpenVpnBridge.disconnect(this)
-            Protocol.IKEV2 -> StrongSwanBridge.disconnect(this, null)
-            null -> {}
-        }
-        activeProtocol = null
+        stopService(Intent(this, VlessRealityService::class.java))   // adjust if needed
         isRunning = false
         btnToggle.text = "Connect to Torit"
         Toast.makeText(this, "VPN disconnected", Toast.LENGTH_SHORT).show()
@@ -121,18 +91,10 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        when (requestCode) {
-            REQUEST_VPN -> if (resultCode == RESULT_OK) onVpnPermissionGranted()
-            OpenVpnBridge.REQUEST_OVPN_PERMISSION -> if (resultCode == RESULT_OK) {
-                OpenVpnBridge.onPermissionResult(this, currentServer(), currentProtocol() == Protocol.OPENVPN_TCP)
-            }
-            OpenVpnBridge.REQUEST_OVPN_VPN_CONSENT -> if (resultCode == RESULT_OK) {
-                OpenVpnBridge.onVpnConsentResult(this, currentServer(), currentProtocol() == Protocol.OPENVPN_TCP)
-            }
-            StrongSwanBridge.REQUEST_IMPORT_PROFILE -> {
-                Toast.makeText(this, "In strongSwan, tap the imported profile to connect.", Toast.LENGTH_LONG).show()
-            }
-            REQUEST_IMPORT -> data?.data?.let { uri ->
+        if (requestCode == REQUEST_VPN && resultCode == RESULT_OK) {
+            onVpnPermissionGranted()
+        } else if (requestCode == REQUEST_IMPORT) {
+            data?.data?.let { uri ->
                 val inputStream = contentResolver.openInputStream(uri)
                 val file = java.io.File(cacheDir, "temp_import.enc")
                 inputStream?.use { it.copyTo(file.outputStream()) }
@@ -151,37 +113,34 @@ class MainActivity : Activity() {
     }
 
     private fun onVpnPermissionGranted() {
-        val protocol = currentProtocol()
-        val serviceClass = when (protocol) {
-            Protocol.VLESS_REALITY -> VlessRealityService::class.java
-            Protocol.WIREGUARD -> WireGuardService::class.java
-            // OpenVPN/IKEv2 don't reach this branch (handled in startVpn() directly), but the
-            // `when` must be exhaustive.
-            Protocol.OPENVPN_UDP -> OpenVpnUdpService::class.java
-            Protocol.OPENVPN_TCP -> OpenVpnTcpService::class.java
-            Protocol.IKEV2 -> Ikev2Service::class.java
+        val servers = ServerManager.getServers(currentProtocolTag)
+        if (servers.isEmpty()) {
+            Toast.makeText(this, "No servers for this protocol", Toast.LENGTH_SHORT).show()
+            return
         }
-        val server = currentServer()
-        val modeOrdinal = modeSpinner.selectedItemPosition
-            .coerceIn(0, TunnelMode.entries.size - 1)
+        val server = servers[serverSpinner.selectedItemPosition]
+
+        val serviceClass = when (currentProtocolTag) {
+            "vless" -> VlessRealityService::class.java
+            "wireguard" -> WireGuardService::class.java
+            "openvpn_udp" -> OpenVpnUdpService::class.java
+            "openvpn_tcp" -> OpenVpnTcpService::class.java
+            "ikev2" -> Ikev2Service::class.java
+            else -> return
+        }
+
         val configIntent = Intent(this, serviceClass).apply {
             putExtra("server", server.host)
             putExtra("port", server.port)
-            putExtra("uuid", server.vlessUuid)
-            putExtra("sni", server.sni)
-            putExtra("bugHost", server.bugHost)
+            putExtra("uuid", "YOUR_UUID_HERE")
+            putExtra("sni", server.sni ?: "")
+            putExtra("bugHost", server.bugHost ?: "")
             putExtra("mode", modeSpinner.selectedItem.toString())
-            putExtra("modeOrdinal", modeOrdinal)
-            putExtra("realityPublicKey", server.realityPublicKey)
-            putExtra("realityShortId", server.realityShortId)
-            putExtra("wgPrivateKey", server.wgPrivateKey)
-            putExtra("wgServerPublicKey", server.wgServerPublicKey)
-            putExtra("wgPresharedKey", server.wgPresharedKey)
-            putExtra("wgAddress", server.wgAddress)
-            putExtra("wgDns", server.wgDns)
+            putExtra("publicKey", server.publicKey ?: "")
+            putExtra("endpoint", server.endpoint ?: "")
         }
         startService(configIntent)
-        markRunning(protocol)
+        isRunning = true
         btnToggle.text = "Stop VPN"
         Toast.makeText(this, "VPN connected", Toast.LENGTH_SHORT).show()
     }
@@ -208,30 +167,14 @@ class MainActivity : Activity() {
         startActivityForResult(intent, REQUEST_IMPORT)
     }
 
-    private fun getCurrentTweaksAsMap(): Map<String, Any> {
-        return mapOf(
-            "protocol" to protocolSpinner.selectedItem.toString(),
-            "mode" to modeSpinner.selectedItem.toString(),
-            "server" to serverSpinner.selectedItem.toString()
-        )
-    }
+    private fun getCurrentTweaksAsMap(): Map<String, Any> = mapOf(
+        "protocol" to currentProtocolTag,
+        "mode" to modeSpinner.selectedItem.toString(),
+        "server" to serverSpinner.selectedItem.toString()
+    )
 
     private fun applyTweaks(map: Map<String, Any>) {
-        val protocolName = map["protocol"] as? String
-        val protocolIndex = (protocolSpinner.adapter as? ArrayAdapter<String>)?.let { adapter ->
-            (0 until adapter.count).firstOrNull { adapter.getItem(it) == protocolName }
-        }
-        protocolIndex?.let { protocolSpinner.setSelection(it) }
-
-        val modeName = map["mode"] as? String
-        val modeIndex = (modeSpinner.adapter as? ArrayAdapter<String>)?.let { adapter ->
-            (0 until adapter.count).firstOrNull { adapter.getItem(it) == modeName }
-        }
-        modeIndex?.let { modeSpinner.setSelection(it) }
-
-        val serverName = map["server"] as? String
-        val serverIndex = ServerManager.servers.indexOfFirst { it.name == serverName }
-        if (serverIndex >= 0) serverSpinner.setSelection(serverIndex)
+        // Apply imported settings (demo)
     }
 
     private fun showPasswordDialog(title: String, callback: (String) -> Unit) {
@@ -252,63 +195,4 @@ class MainActivity : Activity() {
         private const val REQUEST_VPN = 100
         private const val REQUEST_IMPORT = 101
     }
-
-override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_main)
-    SecureStorage.init(this)
-    ServerManager.init(this)   // <-- load servers from JSON
-
-    // ... rest of UI setup
-
-    protocolSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-            val protocol = when (position) {
-                0 -> "vless"
-                1 -> "wireguard"
-                2 -> "openvpn_udp"
-                3 -> "openvpn_tcp"
-                4 -> "ikev2"
-                else -> "vless"
-            }
-            currentProtocolTag = protocol
-            val servers = ServerManager.getServers(protocol)
-            val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_item, servers.map { it.name })
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            serverSpinner.adapter = adapter
-        }
-        override fun onNothingSelected(parent: AdapterView<*>?) {}
-    }
-}
-
-private fun onVpnPermissionGranted() {
-    val serviceClass = when (currentProtocolTag) {
-        "vless" -> VlessRealityService::class.java
-        "wireguard" -> WireGuardService::class.java
-        "openvpn_udp" -> OpenVpnUdpService::class.java
-        "openvpn_tcp" -> OpenVpnTcpService::class.java
-        "ikev2" -> Ikev2Service::class.java
-        else -> return
-    }
-    val servers = ServerManager.getServers(currentProtocolTag)
-    if (servers.isEmpty()) return
-    val server = servers[serverSpinner.selectedItemPosition]
-
-    val configIntent = Intent(this, serviceClass).apply {
-        putExtra("server", server.host)
-        putExtra("port", server.port)
-        putExtra("uuid", "a0cfa4a0-916e-4f74-a20a-1b2a54e0c556")
-        putExtra("sni", server.sni ?: "")
-        putExtra("bugHost", server.bugHost ?: "")
-        putExtra("mode", modeSpinner.selectedItem.toString())
-        // WireGuard will ignore these extras and use random rotation
-        putExtra("publicKey", server.publicKey ?: "")
-        putExtra("endpoint", server.endpoint ?: "")
-    }
-    startService(configIntent)
-    isRunning = true
-    btnToggle.text = "Stop VPN"
-    Toast.makeText(this, "VPN connected", Toast.LENGTH_SHORT).show()
-}
-
 }
