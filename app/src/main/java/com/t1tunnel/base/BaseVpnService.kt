@@ -11,6 +11,8 @@ import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.t1tunnel.MainActivity
 import com.t1tunnel.Tun2Socks
+import com.t1tunnel.tunneld.TunnelMode
+import com.t1tunnel.xray.TunnelPorts
 import kotlin.concurrent.thread
 
 abstract class BaseVpnService : VpnService() {
@@ -21,7 +23,7 @@ abstract class BaseVpnService : VpnService() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannel(this)
         startForeground(NOTIFICATION_ID, buildNotification("Initializing..."))
     }
 
@@ -39,7 +41,7 @@ abstract class BaseVpnService : VpnService() {
         val config = ProtocolConfig.fromIntent(intent!!)
         startProtocol(config)
         thread {
-            Tun2Socks.start(tunFd!!.fd, "127.0.0.1:10808", 1350)
+            Tun2Socks.start(tunFd!!.fd, "127.0.0.1:${TunnelPorts.LOCAL_SOCKS_PORT}", 1350)
         }
         return START_STICKY
     }
@@ -80,16 +82,32 @@ data class ProtocolConfig(
     val uuid: String?,
     val sni: String?,
     val bugHost: String?,
-    val mode: String?
+    val mode: String?,
+    val tunnelMode: TunnelMode,
+    val realityPublicKey: String?,
+    val realityShortId: String?,
+    val wgPrivateKey: String?,
+    val wgServerPublicKey: String?,
+    val wgPresharedKey: String?,
+    val wgAddress: String?,
+    val wgDns: String?
 ) {
     companion object {
         fun fromIntent(intent: Intent) = ProtocolConfig(
-            intent.getStringExtra("server") ?: "vpn.example.com",
-            intent.getIntExtra("port", 443),
-            intent.getStringExtra("uuid") ?: "",
-            intent.getStringExtra("sni") ?: "www.microsoft.com",
-            intent.getStringExtra("bugHost") ?: "",
-            intent.getStringExtra("mode") ?: "direct"
+            server = intent.getStringExtra("server") ?: "vpn.example.com",
+            port = intent.getIntExtra("port", 443),
+            uuid = intent.getStringExtra("uuid") ?: "",
+            sni = intent.getStringExtra("sni") ?: "www.microsoft.com",
+            bugHost = intent.getStringExtra("bugHost") ?: "",
+            mode = intent.getStringExtra("mode") ?: "direct",
+            tunnelMode = TunnelMode.entries.getOrElse(intent.getIntExtra("modeOrdinal", 0)) { TunnelMode.DIRECT },
+            realityPublicKey = intent.getStringExtra("realityPublicKey") ?: "",
+            realityShortId = intent.getStringExtra("realityShortId") ?: "",
+            wgPrivateKey = intent.getStringExtra("wgPrivateKey") ?: "",
+            wgServerPublicKey = intent.getStringExtra("wgServerPublicKey") ?: "",
+            wgPresharedKey = intent.getStringExtra("wgPresharedKey") ?: "",
+            wgAddress = intent.getStringExtra("wgAddress") ?: "10.66.66.2/32",
+            wgDns = intent.getStringExtra("wgDns") ?: "1.1.1.1"
         )
     }
 }

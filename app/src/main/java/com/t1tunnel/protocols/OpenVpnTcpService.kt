@@ -1,8 +1,14 @@
 package com.t1tunnel.protocols
-import com.t1tunnel.base.BaseVpnService
-import com.t1tunnel.base.ProtocolConfig
-class OpenVpnTcpService : BaseVpnService() {
-    override val protocolName = "OpenVpnTcpService"
-    override fun startProtocol(config: ProtocolConfig) { /* integrate library */ }
-    override fun stopProtocol() {}
+
+import android.app.Service
+import android.content.Intent
+import android.os.IBinder
+
+/** See OpenVpnUdpService - same reasoning, TCP is just useTcp=true in OpenVpnBridge.connect(). */
+class OpenVpnTcpService : Service() {
+    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        stopSelf()
+        return START_NOT_STICKY
+    }
 }

@@ -6,6 +6,19 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <!-- Needed on Android 11+ (API 30+) so PackageManager can see whether the OpenVPN/IKEv2
+         companion apps are installed, and so we can bind their control services / launch their
+         connect screens. See OpenVpnBridge and StrongSwanBridge. -->
+    <queries>
+        <package android:name="de.blinkt.openvpn" />
+        <package android:name="org.strongswan.android" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="market" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
